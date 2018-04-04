@@ -80,7 +80,15 @@ func registerVhost(t *Tunnel, protocol string, servingPort int) (err error) {
 	// Register for specific subdomain
 	subdomain := strings.ToLower(strings.TrimSpace(t.req.Subdomain))
 	if subdomain != "" {
-		t.url = fmt.Sprintf("%s://%s.%s", protocol, subdomain, vhost)
+		if subdomain == "@" {
+			t.url = fmt.Sprintf("%s://%s.%s", protocol, t.ctl.auth.User, vhost) //如果是@,就配置为用户名根域
+		} else {
+			if strings.Index(subdomain, ".") != -1 {
+				t.url = fmt.Sprintf("%s://%s", protocol, subdomain) //如果包含“.”,就作为完整私有域名映射模式
+			} else {
+				t.url = fmt.Sprintf("%s://%s.%s.%s", protocol, subdomain, t.ctl.auth.User, vhost) //这里改动一点，把域名改成二级域名,这样用户就只能修改自己的域了
+			}
+		}
 		return tunnelRegistry.Register(t.url, t)
 	}
 

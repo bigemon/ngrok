@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"ngrok/auth"
 	"ngrok/conn"
 	"ngrok/msg"
 	"ngrok/util"
@@ -60,9 +61,9 @@ type Control struct {
 	shutdown *util.Shutdown
 }
 
+var tokenAuth, _ = auth.New() //init auth
 func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 	var err error
-
 	// create the object
 	c := &Control{
 		auth:            authMsg,
@@ -80,6 +81,14 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 	failAuth := func(e error) {
 		_ = msg.WriteMsg(ctlConn, &msg.AuthResp{Error: e.Error()})
 		ctlConn.Close()
+	}
+
+	// auth the username and password
+	if usrName, err := tokenAuth.Auth(authMsg.User); err != nil {
+		failAuth(err)
+		return
+	} else {
+		c.auth.User = usrName //鉴权成功,就把UserName部分剥离出来赋回去,方便传到下面继续处理
 	}
 
 	// register the clientid
